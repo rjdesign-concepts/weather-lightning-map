@@ -15,6 +15,22 @@
       <input id="search-input" type="text" placeholder="Search a city..." autocomplete="off" />
       <button id="search-btn">Search</button>
       <button id="locate-btn" title="Use my location">📍</button>
+
+      <span class="control-divider" aria-hidden="true"></span>
+
+      <label class="toggle-switch" title="Show or hide lightning strikes">
+        <input type="checkbox" id="lightning-toggle" checked />
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span class="toggle-label">⚡ Lightning</span>
+      </label>
+
+      <button id="units-toggle" class="pill-toggle" title="Switch between metric and imperial units">
+        °C · km/h
+      </button>
+
+      <button id="settings-btn" class="icon-btn" title="More settings" aria-haspopup="dialog" aria-controls="settings-modal">
+        ⚙️
+      </button>
     </div>
   </header>
 
@@ -32,6 +48,63 @@
     </aside>
   </main>
 
+  <div id="settings-modal" class="modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="modal-header">
+        <h2 id="settings-title">Settings</h2>
+        <button id="settings-close" class="icon-btn" title="Close">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <label class="field">
+          <span>Lightning strike window</span>
+          <select id="setting-window">
+            <option value="5">Last 5 minutes</option>
+            <option value="10">Last 10 minutes</option>
+            <option value="20">Last 20 minutes</option>
+            <option value="60">Last 60 minutes</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Max strikes shown at once</span>
+          <select id="setting-max-markers">
+            <option value="100">100</option>
+            <option value="300">300</option>
+            <option value="1000">1000</option>
+            <option value="0">Unlimited</option>
+          </select>
+        </label>
+
+        <label class="field field-checkbox">
+          <input type="checkbox" id="setting-status-badge" />
+          <span>Show live connection status badge</span>
+        </label>
+
+        <label class="field">
+          <span>Map style</span>
+          <select id="setting-basemap">
+            <option value="standard">Standard</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>When the map opens</span>
+          <select id="setting-start-location">
+            <option value="default">Start at the default view (London)</option>
+            <option value="remember">Remember where I left off</option>
+            <option value="geolocate">Use my location</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="modal-footer">
+        <button id="settings-reset" class="text-btn">Reset to defaults</button>
+      </div>
+    </div>
+  </div>
+
   <footer class="app-footer">
     Weather data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (no API key required).
     Lightning data: © <a href="https://www.blitzortung.org/" target="_blank" rel="noopener">Blitzortung.org</a>
@@ -39,6 +112,7 @@
   </footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/settings.js"></script>
   <script src="js/lightning.js"></script>
   <script src="js/app.js"></script>
 </body>
