@@ -11,6 +11,22 @@ lightning activity. Built with [Leaflet](https://leafletjs.com/) and
 - Search for a city by name.
 - "Use my location" button.
 - A lightning overlay that shows recent strikes near the visible map area.
+- Customizable via header toggles and a settings panel — see Settings below.
+
+## Settings
+
+Controls are split into two tiers:
+
+- **Header (core, one click)** — a Lightning on/off switch, and a °C/°F ·
+  km/h/mph units toggle.
+- **Settings panel (gear icon, more deliberate)** — lightning strike time
+  window (5/10/20/60 min), max strikes rendered at once, whether the live
+  connection status badge is shown, map style (standard/dark), and what the
+  map does on load (fixed default view, remember where you left off, or use
+  your current location).
+
+Everything is saved to the browser's `localStorage` and persists between
+visits — see `js/settings.js` for the storage format.
 
 ## Lightning data
 
@@ -53,7 +69,8 @@ Then open the printed URL in your browser.
 .
 ├── index.html          Page markup
 ├── css/style.css        Styling
-├── js/app.js             Map, weather, search, geolocation
+├── js/app.js             Map, weather, search, geolocation, settings wiring
+├── js/settings.js        User settings — localStorage-backed store (see Settings above)
 ├── js/lightning.js       Lightning data layer (live Blitzortung.org feed — see above)
 └── README.md
 ```
