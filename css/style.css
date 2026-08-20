@@ -134,6 +134,31 @@ main {
   display: inline-block;
 }
 
+.status-badge {
+  margin-left: auto;
+  font-size: 0.72rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.status-badge.status-connected {
+  color: #4ade80;
+  border-color: #4ade80;
+}
+
+.status-badge.status-connecting {
+  color: var(--accent-warn);
+  border-color: var(--accent-warn);
+}
+
+.status-badge.status-disconnected {
+  color: #f87171;
+  border-color: #f87171;
+}
+
 .app-footer {
   font-size: 0.75rem;
   color: var(--text-dim);
