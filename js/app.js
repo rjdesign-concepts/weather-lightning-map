@@ -2,7 +2,7 @@
  * Weather & Lightning Map — main app logic.
  * Map: Leaflet + OpenStreetMap tiles.
  * Weather: Open-Meteo (https://open-meteo.com/) — free, no API key required.
- * Lightning: simulated layer, see js/lightning.js.
+ * Lightning: live feed from Blitzortung.org, see js/lightning.js.
  */
 
 const map = L.map("map", { zoomControl: true }).setView([51.505, -0.09], 6); // London default
@@ -19,6 +19,7 @@ const panelContent = document.getElementById("panel-content");
 const searchInput = document.getElementById("search-input");
 const searchBtn = document.getElementById("search-btn");
 const locateBtn = document.getElementById("locate-btn");
+const lightningStatusEl = document.getElementById("lightning-status");
 
 const WEATHER_CODES = {
   0: "Clear sky",
@@ -95,32 +96,65 @@ map.on("click", (e) => {
   showWeatherAt(e.latlng.lat, e.latlng.lng);
 });
 
-async function refreshLightning() {
-  const b = map.getBounds();
-  const strikes = await fetchLightningStrikes({
-    north: b.getNorth(),
-    south: b.getSouth(),
-    east: b.getEast(),
-    west: b.getWest(),
-  });
+// --- Live lightning feed (Blitzortung.org) -------------------------------
+// See js/lightning.js for the feed itself. Strikes arrive one at a time in
+// real time; we keep a short rolling buffer so panning/zooming and periodic
+// pruning can redraw what's currently in view without re-fetching anything.
 
-  lightningLayer.clearLayers();
-  strikes.forEach((s) => {
-    L.circleMarker([s.lat, s.lon], {
-      radius: 6,
-      color: "#fbbf24",
-      fillColor: "#fbbf24",
-      fillOpacity: 0.8,
-      weight: 1,
-    })
-      .bindPopup(`Simulated strike — ${formatStrikeAge(s.timestamp)}`)
-      .addTo(lightningLayer);
-  });
+const LIGHTNING_MAX_AGE_MS = 20 * 60 * 1000; // keep strikes for 20 minutes
+let recentStrikes = [];
+
+function strikeInBounds(strike, bounds) {
+  return bounds.contains([strike.lat, strike.lon]);
 }
 
-map.on("moveend", refreshLightning);
-refreshLightning();
-setInterval(refreshLightning, 60 * 1000);
+function addStrikeMarker(strike) {
+  L.circleMarker([strike.lat, strike.lon], {
+    radius: 6,
+    color: "#fbbf24",
+    fillColor: "#fbbf24",
+    fillOpacity: 0.8,
+    weight: 1,
+  })
+    .bindPopup(`Lightning strike — ${formatStrikeAge(strike.timestamp)}`)
+    .addTo(lightningLayer);
+}
+
+function redrawLightning() {
+  const bounds = map.getBounds();
+  lightningLayer.clearLayers();
+  recentStrikes.filter((s) => strikeInBounds(s, bounds)).forEach(addStrikeMarker);
+}
+
+function pruneOldStrikes() {
+  const cutoff = Date.now() - LIGHTNING_MAX_AGE_MS;
+  recentStrikes = recentStrikes.filter((s) => s.timestamp >= cutoff);
+}
+
+function updateLightningStatus(status) {
+  if (!lightningStatusEl) return;
+  lightningStatusEl.textContent =
+    status === "connected" ? "live" : status === "connecting" ? "connecting…" : "reconnecting…";
+  lightningStatusEl.className = `status-badge status-${status}`;
+}
+
+LightningFeed.onStatusChange(updateLightningStatus);
+
+LightningFeed.onStrike((strike) => {
+  recentStrikes.push(strike);
+  if (recentStrikes.length > 5000) recentStrikes.shift(); // hard cap, just in case
+  if (strikeInBounds(strike, map.getBounds())) {
+    addStrikeMarker(strike);
+  }
+});
+
+map.on("moveend", redrawLightning);
+setInterval(() => {
+  pruneOldStrikes();
+  redrawLightning();
+}, 30 * 1000);
+
+LightningFeed.connect();
 
 searchBtn.addEventListener("click", async () => {
   const query = searchInput.value.trim();
