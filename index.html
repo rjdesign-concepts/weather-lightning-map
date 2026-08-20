@@ -26,14 +26,16 @@
         <p class="hint">Click anywhere on the map to see current weather for that location.</p>
       </div>
       <div id="lightning-legend">
-        <span class="legend-dot"></span> Recent lightning strike (last 60 min, simulated)
+        <span class="legend-dot"></span> Lightning strikes (last 20 min)
+        <span id="lightning-status" class="status-badge status-disconnected">connecting…</span>
       </div>
     </aside>
   </main>
 
   <footer class="app-footer">
     Weather data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (no API key required).
-    Lightning data: demo/simulated — see README for hooking up a live feed (e.g. Blitzortung.org).
+    Lightning data: © <a href="https://www.blitzortung.org/" target="_blank" rel="noopener">Blitzortung.org</a>
+    community network (CC BY-SA 4.0) — personal, non-commercial use only.
   </footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
