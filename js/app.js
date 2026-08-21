@@ -3,8 +3,8 @@
  * Map: Leaflet + OpenStreetMap/CARTO tiles.
  * Weather: Open-Meteo (https://open-meteo.com/) — free, no API key required.
  * Lightning: live feed from Blitzortung.org, see js/lightning.js.
- * Settings: see js/settings.js — core toggles live in the header, everything
- * else lives behind the gear icon.
+ * Settings: see js/settings.js — core toggles live in the toolbar,
+ * everything else lives behind the gear icon.
  */
 
 const DEFAULT_CENTER = [51.505, -0.09]; // London
@@ -28,6 +28,17 @@ const TILE_LAYERS = {
   },
 };
 
+const PIN_SVG =
+  '<svg class="map-pin-icon" width="24" height="24" viewBox="0 0 24 24" style="fill:var(--sky)">' +
+  '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/>' +
+  "</svg>";
+
+const CLOUD_SUN_SVG =
+  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+  '<circle cx="8" cy="8" r="3.2"/>' +
+  '<path d="M5 18h11a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 7.1 9.9"/>' +
+  "</svg>";
+
 // --- Initial view (depends on the "when the map opens" setting) ---------
 
 function getInitialView() {
@@ -40,7 +51,7 @@ function getInitialView() {
 }
 
 const initialView = getInitialView();
-const map = L.map("map", { zoomControl: true }).setView(initialView.center, initialView.zoom);
+const map = L.map("map", { zoomControl: false }).setView(initialView.center, initialView.zoom);
 
 let activeTileLayer = null;
 function setBasemap(key) {
@@ -48,7 +59,6 @@ function setBasemap(key) {
   if (activeTileLayer) map.removeLayer(activeTileLayer);
   activeTileLayer = L.tileLayer(config.url, config.options).addTo(map);
 }
-setBasemap(Settings.get("basemap"));
 
 if (Settings.get("startLocation") === "geolocate" && navigator.geolocation) {
   navigator.geolocation.getCurrentPosition(
@@ -63,16 +73,22 @@ map.on("moveend", () => {
 });
 
 let weatherMarker = null;
-let currentWeatherLocation = null; // {lat, lon, label} — used to re-render on unit changes
+let currentWeatherLocation = null; // {lat, lon, label} — used to re-render on unit/theme changes
 const lightningLayer = L.layerGroup().addTo(map);
 
-const panelContent = document.getElementById("panel-content");
 const searchInput = document.getElementById("search-input");
-const searchBtn = document.getElementById("search-btn");
 const locateBtn = document.getElementById("locate-btn");
-const lightningStatusEl = document.getElementById("lightning-status");
+const statusPillEl = document.querySelector(".status-pill");
+const statusDotEl = document.getElementById("status-dot");
+const statusTextEl = document.getElementById("status-text");
+const weatherToggle = document.getElementById("weather-toggle");
 const lightningToggle = document.getElementById("lightning-toggle");
-const unitsToggleBtn = document.getElementById("units-toggle");
+const aircraftToggle = document.getElementById("aircraft-toggle");
+const themeToggleBtn = document.getElementById("theme-toggle");
+const themeIconMoon = document.getElementById("theme-icon-moon");
+const themeIconSun = document.getElementById("theme-icon-sun");
+const zoomInBtn = document.getElementById("zoom-in-btn");
+const zoomOutBtn = document.getElementById("zoom-out-btn");
 const settingsBtn = document.getElementById("settings-btn");
 const settingsModal = document.getElementById("settings-modal");
 const settingsClose = document.getElementById("settings-close");
@@ -80,7 +96,7 @@ const settingsReset = document.getElementById("settings-reset");
 const settingWindowSelect = document.getElementById("setting-window");
 const settingMaxMarkersSelect = document.getElementById("setting-max-markers");
 const settingStatusBadgeCheckbox = document.getElementById("setting-status-badge");
-const settingBasemapSelect = document.getElementById("setting-basemap");
+const settingUnitsSelect = document.getElementById("setting-units");
 const settingStartLocationSelect = document.getElementById("setting-start-location");
 
 const WEATHER_CODES = {
@@ -107,6 +123,34 @@ const WEATHER_CODES = {
   99: "Thunderstorm with heavy hail",
 };
 
+// --- Theme (drives both the UI palette and the map basemap) ---------------
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  setBasemap(theme === "dark" ? "dark" : "standard");
+  const isDark = theme === "dark";
+  // Note: the `hidden` IDL property doesn't reflect to the content
+  // attribute on inline <svg> elements in every browser, so it silently
+  // no-ops here — toggleAttribute operates on the attribute directly and
+  // works consistently for both HTML and SVG elements. Paired with the
+  // `svg[hidden] { display: none }` rule in style.css.
+  themeIconMoon.toggleAttribute("hidden", isDark);
+  themeIconSun.toggleAttribute("hidden", !isDark);
+  themeToggleBtn.title = isDark ? "Switch to light theme" : "Switch to dark theme";
+}
+applyTheme(Settings.get("theme"));
+
+themeToggleBtn.addEventListener("click", () => {
+  const next = Settings.get("theme") === "light" ? "dark" : "light";
+  Settings.set({ theme: next });
+  applyTheme(next);
+});
+
+// --- Zoom controls ----------------------------------------------------------
+
+zoomInBtn.addEventListener("click", () => map.zoomIn());
+zoomOutBtn.addEventListener("click", () => map.zoomOut());
+
 // --- Units -----------------------------------------------------------------
 
 function getUnitConfig() {
@@ -117,11 +161,6 @@ function getUnitConfig() {
     tempSuffix: imperial ? "°F" : "°C",
     windSuffix: imperial ? "mph" : "km/h",
   };
-}
-
-function updateUnitsButtonLabel() {
-  const { tempSuffix, windSuffix } = getUnitConfig();
-  unitsToggleBtn.textContent = `${tempSuffix} · ${windSuffix}`;
 }
 
 async function fetchWeather(lat, lon) {
@@ -145,36 +184,48 @@ async function geocodeCity(name) {
   return { lat: latitude, lon: longitude, label: `${resolvedName}, ${country}` };
 }
 
-function renderWeatherPanel(label, data) {
-  const c = data.current;
-  const description = WEATHER_CODES[c.weather_code] ?? "Unknown conditions";
-  const { tempSuffix, windSuffix } = getUnitConfig();
+// --- Weather pin + floating badge (replaces the old side panel) -----------
 
-  panelContent.innerHTML = `
-    <h2>${label}</h2>
-    <div class="weather-row"><span>Conditions</span><span>${description}</span></div>
-    <div class="weather-row"><span>Temperature</span><span>${c.temperature_2m}${tempSuffix}</span></div>
-    <div class="weather-row"><span>Feels like</span><span>${c.apparent_temperature}${tempSuffix}</span></div>
-    <div class="weather-row"><span>Humidity</span><span>${c.relative_humidity_2m}%</span></div>
-    <div class="weather-row"><span>Wind speed</span><span>${c.wind_speed_10m} ${windSuffix}</span></div>
-  `;
+function setWeatherPin(lat, lon, badgeInnerHtml) {
+  const icon = L.divIcon({
+    html: `<div class="map-pin-wrap">${badgeInnerHtml}${PIN_SVG}</div>`,
+    className: "",
+    iconSize: [200, 60],
+    iconAnchor: [100, 54],
+  });
+  if (weatherMarker) {
+    weatherMarker.setLatLng([lat, lon]);
+    weatherMarker.setIcon(icon);
+  } else {
+    weatherMarker = L.marker([lat, lon], { icon, interactive: false }).addTo(map);
+  }
+}
+
+function removeWeatherPin() {
+  if (weatherMarker) {
+    map.removeLayer(weatherMarker);
+    weatherMarker = null;
+  }
+}
+
+function renderWeatherBadge(data) {
+  const c = data.current;
+  const description = WEATHER_CODES[c.weather_code] ?? "Unknown";
+  const { tempSuffix } = getUnitConfig();
+  return `<div class="map-pin-badge">${CLOUD_SUN_SVG}<span>${Math.round(c.temperature_2m)}${tempSuffix} ${description}</span></div>`;
 }
 
 async function showWeatherAt(lat, lon, label) {
   currentWeatherLocation = { lat, lon, label };
+  if (!Settings.get("weatherVisible")) return;
 
-  if (weatherMarker) {
-    map.removeLayer(weatherMarker);
-  }
-  weatherMarker = L.marker([lat, lon]).addTo(map);
-
-  panelContent.innerHTML = `<p class="hint">Loading weather...</p>`;
+  setWeatherPin(lat, lon, `<div class="map-pin-badge"><span>Loading…</span></div>`);
 
   try {
     const data = await fetchWeather(lat, lon);
-    renderWeatherPanel(label ?? `${lat.toFixed(2)}, ${lon.toFixed(2)}`, data);
+    setWeatherPin(lat, lon, renderWeatherBadge(data));
   } catch (err) {
-    panelContent.innerHTML = `<p class="hint">Couldn't load weather: ${err.message}</p>`;
+    setWeatherPin(lat, lon, `<div class="map-pin-badge"><span>Couldn't load weather</span></div>`);
   }
 }
 
@@ -205,9 +256,9 @@ function clearRenderedMarkers() {
 function addStrikeMarker(strike) {
   const marker = L.circleMarker([strike.lat, strike.lon], {
     radius: 6,
-    color: "#fbbf24",
-    fillColor: "#fbbf24",
-    fillOpacity: 0.8,
+    color: "#f59e0b",
+    fillColor: "#f59e0b",
+    fillOpacity: 0.85,
     weight: 1,
   })
     .bindPopup(`Lightning strike — ${formatStrikeAge(strike.timestamp)}`)
@@ -222,6 +273,43 @@ function addStrikeMarker(strike) {
       lightningLayer.removeLayer(oldest.marker);
     }
   }
+}
+
+/**
+ * A strike's thunder doesn't arrive everywhere at once — it propagates
+ * outward from the strike location and fades with distance. This animates
+ * that: an expanding ring (real-world radius in metres, so it scales
+ * correctly with zoom) that grows and fades once, then disappears, leaving
+ * just the plain strike dot behind (added separately via addStrikeMarker).
+ */
+function animateSoundWave(lat, lon, startDelayMs) {
+  const MAX_RADIUS_M = 22000; // roughly how far thunder can carry on a calm day
+  const DURATION_MS = 2600;
+
+  setTimeout(() => {
+    const ring = L.circle([lat, lon], {
+      radius: 1,
+      color: "#f59e0b",
+      weight: 1.5,
+      fill: false,
+      opacity: 0.55,
+      interactive: false,
+    }).addTo(lightningLayer);
+
+    const start = performance.now();
+    function tick(now) {
+      const t = Math.min(1, (now - start) / DURATION_MS);
+      const eased = 1 - Math.pow(1 - t, 2); // ease-out: fast start, slow finish
+      ring.setRadius(MAX_RADIUS_M * eased);
+      ring.setStyle({ opacity: 0.55 * (1 - t) });
+      if (t < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        lightningLayer.removeLayer(ring);
+      }
+    }
+    requestAnimationFrame(tick);
+  }, startDelayMs);
 }
 
 function redrawLightning() {
@@ -243,20 +331,38 @@ function pruneOldStrikes() {
   recentStrikes = recentStrikes.filter((s) => s.timestamp >= cutoff);
 }
 
+// --- Live status pill --------------------------------------------------
+
+let lastLiveUpdateAt = Date.now();
+
+function updateStatusText() {
+  const status = LightningFeed.getStatus();
+  if (status === "connected") {
+    const seconds = Math.max(0, Math.round((Date.now() - lastLiveUpdateAt) / 1000));
+    statusTextEl.textContent = `Live · updated ${seconds}s ago`;
+  } else if (status === "connecting") {
+    statusTextEl.textContent = "Partial connection";
+  } else {
+    statusTextEl.textContent = "Disconnected";
+  }
+}
+
 function updateLightningStatus(status) {
-  if (!lightningStatusEl) return;
-  lightningStatusEl.textContent =
-    status === "connected" ? "live" : status === "connecting" ? "connecting…" : "reconnecting…";
-  lightningStatusEl.className = `status-badge status-${status}`;
+  statusDotEl.className = `status-dot status-${status}`;
+  if (status === "connected") lastLiveUpdateAt = Date.now();
+  updateStatusText();
 }
 
 LightningFeed.onStatusChange(updateLightningStatus);
+setInterval(updateStatusText, 1000);
 
 LightningFeed.onStrike((strike) => {
   recentStrikes.push(strike);
   if (recentStrikes.length > 5000) recentStrikes.shift(); // hard cap, just in case
+  lastLiveUpdateAt = Date.now();
   if (Settings.get("lightningVisible") && strikeInBounds(strike, map.getBounds())) {
     addStrikeMarker(strike);
+    animateSoundWave(strike.lat, strike.lon, 0);
   }
 });
 
@@ -270,25 +376,22 @@ LightningFeed.connect();
 
 // --- Search / geolocation --------------------------------------------------
 
-searchBtn.addEventListener("click", async () => {
+async function runSearch() {
   const query = searchInput.value.trim();
   if (!query) return;
-  panelContent.innerHTML = `<p class="hint">Searching...</p>`;
   try {
     const result = await geocodeCity(query);
-    if (!result) {
-      panelContent.innerHTML = `<p class="hint">No results for "${query}".</p>`;
-      return;
-    }
+    if (!result) return;
     map.setView([result.lat, result.lon], 9);
     showWeatherAt(result.lat, result.lon, result.label);
   } catch (err) {
-    panelContent.innerHTML = `<p class="hint">Search failed: ${err.message}</p>`;
+    // Silently ignore — there's no side panel to report this in any more;
+    // the search box itself just won't move the map.
   }
-});
+}
 
 searchInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") searchBtn.click();
+  if (e.key === "Enter") runSearch();
 });
 
 locateBtn.addEventListener("click", () => {
@@ -308,24 +411,40 @@ locateBtn.addEventListener("click", () => {
   );
 });
 
-// --- Core toggle: lightning on/off -----------------------------------------
+// --- Core toggles: Weather / Lightning / Aircraft ---------------------------
 
-lightningToggle.checked = Settings.get("lightningVisible");
-lightningToggle.addEventListener("change", () => {
-  Settings.set({ lightningVisible: lightningToggle.checked });
+function setTogglePressed(button, pressed) {
+  button.setAttribute("aria-pressed", String(pressed));
+}
+
+setTogglePressed(weatherToggle, Settings.get("weatherVisible"));
+weatherToggle.addEventListener("click", () => {
+  const next = !(Settings.get("weatherVisible"));
+  Settings.set({ weatherVisible: next });
+  setTogglePressed(weatherToggle, next);
+  if (!next) {
+    removeWeatherPin();
+  } else if (currentWeatherLocation) {
+    showWeatherAt(currentWeatherLocation.lat, currentWeatherLocation.lon, currentWeatherLocation.label);
+  }
+});
+
+setTogglePressed(lightningToggle, Settings.get("lightningVisible"));
+lightningToggle.addEventListener("click", () => {
+  const next = !(Settings.get("lightningVisible"));
+  Settings.set({ lightningVisible: next });
+  setTogglePressed(lightningToggle, next);
   redrawLightning();
 });
 
-// --- Core toggle: units ------------------------------------------------
-
-updateUnitsButtonLabel();
-unitsToggleBtn.addEventListener("click", () => {
-  const next = Settings.get("units") === "metric" ? "imperial" : "metric";
-  Settings.set({ units: next });
-  updateUnitsButtonLabel();
-  if (currentWeatherLocation) {
-    showWeatherAt(currentWeatherLocation.lat, currentWeatherLocation.lon, currentWeatherLocation.label);
-  }
+// Aircraft: a real, persisted toggle that matches the design — there's no
+// live flight-data source wired up yet (see project notes), so this simply
+// doesn't render anything either way.
+setTogglePressed(aircraftToggle, Settings.get("aircraftVisible"));
+aircraftToggle.addEventListener("click", () => {
+  const next = !(Settings.get("aircraftVisible"));
+  Settings.set({ aircraftVisible: next });
+  setTogglePressed(aircraftToggle, next);
 });
 
 // --- Settings modal ----------------------------------------------------
@@ -350,9 +469,9 @@ function syncSettingsFormFromState() {
   settingWindowSelect.value = String(Settings.get("lightningWindowMinutes"));
   settingMaxMarkersSelect.value = String(Settings.get("lightningMaxMarkers"));
   settingStatusBadgeCheckbox.checked = Settings.get("showStatusBadge");
-  settingBasemapSelect.value = Settings.get("basemap");
+  settingUnitsSelect.value = Settings.get("units");
   settingStartLocationSelect.value = Settings.get("startLocation");
-  lightningStatusEl.style.display = Settings.get("showStatusBadge") ? "" : "none";
+  statusPillEl.style.display = Settings.get("showStatusBadge") ? "" : "none";
 }
 syncSettingsFormFromState();
 
@@ -369,12 +488,14 @@ settingMaxMarkersSelect.addEventListener("change", () => {
 
 settingStatusBadgeCheckbox.addEventListener("change", () => {
   Settings.set({ showStatusBadge: settingStatusBadgeCheckbox.checked });
-  lightningStatusEl.style.display = settingStatusBadgeCheckbox.checked ? "" : "none";
+  statusPillEl.style.display = settingStatusBadgeCheckbox.checked ? "" : "none";
 });
 
-settingBasemapSelect.addEventListener("change", () => {
-  Settings.set({ basemap: settingBasemapSelect.value });
-  setBasemap(settingBasemapSelect.value);
+settingUnitsSelect.addEventListener("change", () => {
+  Settings.set({ units: settingUnitsSelect.value });
+  if (currentWeatherLocation) {
+    showWeatherAt(currentWeatherLocation.lat, currentWeatherLocation.lon, currentWeatherLocation.label);
+  }
 });
 
 settingStartLocationSelect.addEventListener("change", () => {
@@ -383,10 +504,11 @@ settingStartLocationSelect.addEventListener("change", () => {
 
 settingsReset.addEventListener("click", () => {
   Settings.reset();
-  lightningToggle.checked = Settings.get("lightningVisible");
-  updateUnitsButtonLabel();
+  setTogglePressed(weatherToggle, Settings.get("weatherVisible"));
+  setTogglePressed(lightningToggle, Settings.get("lightningVisible"));
+  setTogglePressed(aircraftToggle, Settings.get("aircraftVisible"));
+  applyTheme(Settings.get("theme"));
   syncSettingsFormFromState();
-  setBasemap(Settings.get("basemap"));
   pruneOldStrikes();
   redrawLightning();
   if (currentWeatherLocation) {
