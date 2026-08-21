@@ -65,6 +65,29 @@
         </button>
       </div>
     </div>
+
+    <!-- Top-right detailed weather card, opened by clicking the map-pin weather pill -->
+    <div id="weather-detail" class="weather-detail" hidden>
+      <div class="weather-detail-header">
+        <div class="weather-detail-title">
+          <p class="weather-detail-location" id="weather-detail-location">—</p>
+          <p class="weather-detail-description" id="weather-detail-description">—</p>
+        </div>
+        <button id="weather-detail-close" class="icon-btn" title="Close" aria-label="Close weather detail">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+        </button>
+      </div>
+      <div class="weather-detail-separator"></div>
+      <div class="weather-detail-section">
+        <p class="weather-detail-section-label">6-hour forecast</p>
+        <div class="weather-detail-row" id="weather-detail-hourly"></div>
+      </div>
+      <div class="weather-detail-separator"></div>
+      <div class="weather-detail-section">
+        <p class="weather-detail-section-label">7-day forecast</p>
+        <div class="weather-detail-row" id="weather-detail-daily"></div>
+      </div>
+    </div>
   </main>
 
   <!-- Settings modal -->
