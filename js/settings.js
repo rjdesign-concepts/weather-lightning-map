@@ -2,8 +2,9 @@
  * User-configurable settings, persisted to localStorage.
  *
  * Two tiers by design:
- *  - "Core" settings are surfaced directly in the header (lightning on/off,
- *    units) — one click, no menu.
+ *  - "Core" settings are surfaced directly in the toolbar (the Weather /
+ *    Lightning / Aircraft toggle group, and the theme toggle) — one click,
+ *    no menu.
  *  - Everything else lives behind the gear icon in the settings modal —
  *    changed rarely enough that a bit of friction is fine.
  *
@@ -16,14 +17,16 @@ const LAST_VIEW_KEY = "weatherLightningMap:lastView:v1";
 
 const DEFAULTS = {
   // Core
+  weatherVisible: true,
   lightningVisible: true,
-  units: "metric", // "metric" (°C, km/h) | "imperial" (°F, mph)
+  aircraftVisible: false, // toggle exists in the UI; no live data source yet
+  theme: "light", // "light" | "dark" — also drives the map basemap
 
   // Settings panel
+  units: "metric", // "metric" (°C, km/h) | "imperial" (°F, mph)
   lightningWindowMinutes: 20, // 5 | 10 | 20 | 60
   lightningMaxMarkers: 300, // 100 | 300 | 1000 | 0 (0 = unlimited)
   showStatusBadge: true,
-  basemap: "standard", // "standard" | "dark"
   startLocation: "default", // "default" | "remember" | "geolocate"
 };
 
