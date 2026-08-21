@@ -40,6 +40,70 @@ const CLOUD_SUN_SVG =
   '<path d="M5 18h11a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 7.1 9.9"/>' +
   "</svg>";
 
+// --- Small hand-drawn weather-category icon set (used in the detail card) --
+// Matches the app's existing stroke-icon style: currentColor, 1.8 stroke,
+// round caps/joins, 24x24 viewBox. Real network access isn't available in
+// this environment to pull the design's actual icon assets, so these are
+// simplified stand-ins in the same visual language.
+
+const SUN_SVG =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+  '<circle cx="12" cy="12" r="4.2"/>' +
+  '<line x1="12" y1="2.5" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21.5"/>' +
+  '<line x1="2.5" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21.5" y2="12"/>' +
+  '<line x1="5.1" y1="5.1" x2="6.9" y2="6.9"/><line x1="17.1" y1="17.1" x2="18.9" y2="18.9"/>' +
+  '<line x1="5.1" y1="18.9" x2="6.9" y2="17.1"/><line x1="17.1" y1="6.9" x2="18.9" y2="5.1"/>' +
+  "</svg>";
+
+const CLOUD_SUN_ICON_SVG =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+  '<circle cx="8.5" cy="7.5" r="3"/>' +
+  '<path d="M5 18h11.5a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 7.5 9.9"/>' +
+  "</svg>";
+
+const CLOUD_SVG =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M6 18h11.5a3.5 3.5 0 0 0 .5-6.96 5 5 0 0 0-9.6-1.65A4 4 0 0 0 6 18Z"/>' +
+  "</svg>";
+
+const FOG_SVG =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M6 10h11.5a3.5 3.5 0 0 0 .3-6.98"/>' +
+  '<line x1="3.5" y1="14.5" x2="20.5" y2="14.5"/>' +
+  '<line x1="3.5" y1="18.5" x2="20.5" y2="18.5"/>' +
+  "</svg>";
+
+const CLOUD_RAIN_SVG =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M6 13.5h11.5a3.5 3.5 0 0 0 .5-6.96 5 5 0 0 0-9.6-1.65A4 4 0 0 0 6 13.5Z"/>' +
+  '<line x1="8.5" y1="17.5" x2="7.5" y2="20.5"/><line x1="12.5" y1="17.5" x2="11.5" y2="20.5"/><line x1="16.5" y1="17.5" x2="15.5" y2="20.5"/>' +
+  "</svg>";
+
+const CLOUD_SNOW_SVG =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M6 13.5h11.5a3.5 3.5 0 0 0 .5-6.96 5 5 0 0 0-9.6-1.65A4 4 0 0 0 6 13.5Z"/>' +
+  '<line x1="8" y1="17" x2="8" y2="21"/><line x1="6" y1="19" x2="10" y2="19"/>' +
+  '<line x1="14.5" y1="17" x2="14.5" y2="21"/><line x1="12.5" y1="19" x2="16.5" y2="19"/>' +
+  "</svg>";
+
+const CLOUD_LIGHTNING_SVG =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M6 12.5h11.5a3.5 3.5 0 0 0 .5-6.96 5 5 0 0 0-9.6-1.65A4 4 0 0 0 6 12.5Z"/>' +
+  '<path d="M13 13.5 10 18h3l-2 4"/>' +
+  "</svg>";
+
+/** Maps an Open-Meteo weather_code to one of the small icon SVGs above. */
+function iconForWeatherCode(code) {
+  if (code === 0 || code === 1) return SUN_SVG;
+  if (code === 2) return CLOUD_SUN_ICON_SVG;
+  if (code === 3) return CLOUD_SVG;
+  if (code === 45 || code === 48) return FOG_SVG;
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return CLOUD_RAIN_SVG;
+  if ([71, 73, 75].includes(code)) return CLOUD_SNOW_SVG;
+  if ([95, 96, 99].includes(code)) return CLOUD_LIGHTNING_SVG;
+  return CLOUD_SVG;
+}
+
 // --- Initial view (depends on the "when the map opens" setting) ---------
 
 function getInitialView() {
@@ -75,6 +139,8 @@ map.on("moveend", () => {
 
 let weatherMarker = null;
 let currentWeatherLocation = null; // {lat, lon, label} — used to re-render on unit/theme changes
+let lastWeatherData = null; // most recent successful fetchWeather() response, for the detail panel
+let weatherDetailOpen = false;
 const lightningLayer = L.layerGroup().addTo(map);
 
 const searchInput = document.getElementById("search-input");
@@ -99,6 +165,12 @@ const settingMaxMarkersSelect = document.getElementById("setting-max-markers");
 const settingStatusBadgeCheckbox = document.getElementById("setting-status-badge");
 const settingUnitsSelect = document.getElementById("setting-units");
 const settingStartLocationSelect = document.getElementById("setting-start-location");
+const weatherDetailEl = document.getElementById("weather-detail");
+const weatherDetailLocationEl = document.getElementById("weather-detail-location");
+const weatherDetailDescriptionEl = document.getElementById("weather-detail-description");
+const weatherDetailCloseBtn = document.getElementById("weather-detail-close");
+const weatherDetailHourlyEl = document.getElementById("weather-detail-hourly");
+const weatherDetailDailyEl = document.getElementById("weather-detail-daily");
 
 const WEATHER_CODES = {
   0: "Clear sky",
@@ -169,6 +241,7 @@ async function fetchWeather(lat, lon) {
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
     `&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code` +
+    `&hourly=temperature_2m,weather_code&daily=temperature_2m_max,weather_code&forecast_days=7` +
     `&temperature_unit=${temperature_unit}&wind_speed_unit=${wind_speed_unit}&timezone=auto`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Weather request failed: ${res.status}`);
@@ -207,6 +280,7 @@ function removeWeatherPin() {
     map.removeLayer(weatherMarker);
     weatherMarker = null;
   }
+  closeWeatherDetail();
 }
 
 function renderWeatherBadge(data) {
@@ -214,6 +288,88 @@ function renderWeatherBadge(data) {
   const description = WEATHER_CODES[c.weather_code] ?? "Unknown";
   const { tempSuffix } = getUnitConfig();
   return `<div class="map-pin-badge">${CLOUD_SUN_SVG}<span>${Math.round(c.temperature_2m)}${tempSuffix} ${description}</span></div>`;
+}
+
+// --- Detailed weather card (top-right, opened from the pin's weather pill) -
+
+const HOUR_LABEL_FORMAT = new Intl.DateTimeFormat("en-US", { hour: "numeric" });
+
+/** Finds the index of "now" within data.hourly.time, using the location's own
+ * UTC offset (data.utc_offset_seconds) rather than the browser's timezone, so
+ * this lines up correctly for locations far from the user. */
+function findHourlyNowIndex(data) {
+  const offsetMs = (data.utc_offset_seconds || 0) * 1000;
+  const localNowMs = Date.now() + offsetMs;
+  const times = data.hourly.time;
+  for (let i = times.length - 1; i >= 0; i--) {
+    // Open-Meteo's "timezone=auto" hourly.time strings are already in local
+    // time for the location and have no trailing "Z", so Date.parse reads
+    // them as if they were UTC — which lines up with our offset-shifted "now".
+    if (Date.parse(times[i]) <= localNowMs) return i;
+  }
+  return 0;
+}
+
+function renderWeatherDetail(data, label) {
+  const { tempSuffix } = getUnitConfig();
+  const c = data.current;
+  weatherDetailLocationEl.textContent = label || "Selected location";
+  weatherDetailDescriptionEl.textContent =
+    `${Math.round(c.temperature_2m)}${tempSuffix} · ${WEATHER_CODES[c.weather_code] ?? "Unknown"}`;
+
+  weatherDetailHourlyEl.innerHTML = "";
+  if (data.hourly) {
+    const startIdx = findHourlyNowIndex(data);
+    for (let i = startIdx; i < Math.min(startIdx + 6, data.hourly.time.length); i++) {
+      const isNow = i === startIdx;
+      const label = isNow ? "Now" : HOUR_LABEL_FORMAT.format(new Date(data.hourly.time[i])).replace(/\s/g, "").toLowerCase();
+      const temp = Math.round(data.hourly.temperature_2m[i]);
+      const icon = iconForWeatherCode(data.hourly.weather_code[i]);
+      weatherDetailHourlyEl.insertAdjacentHTML(
+        "beforeend",
+        `<div class="weather-detail-item${isNow ? " weather-detail-item--now" : ""}">
+          <span class="weather-detail-item-label">${label}</span>
+          <span class="weather-detail-item-top">${icon}</span>
+          <span class="weather-detail-badge">${temp}°</span>
+        </div>`
+      );
+    }
+  }
+
+  weatherDetailDailyEl.innerHTML = "";
+  if (data.daily) {
+    for (let i = 0; i < data.daily.time.length; i++) {
+      // data.daily.time entries are plain "YYYY-MM-DD" dates with no time
+      // component — the ECMAScript date parser treats those as UTC midnight,
+      // which can roll over to the wrong weekday once formatted in the
+      // browser's own local timezone. Parsing the parts manually into a
+      // local-midnight Date avoids that shift.
+      const [y, m, d] = data.daily.time[i].split("-").map(Number);
+      const label = i === 0 ? "Today" : new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "short" });
+      const temp = Math.round(data.daily.temperature_2m_max[i]);
+      const icon = iconForWeatherCode(data.daily.weather_code[i]);
+      weatherDetailDailyEl.insertAdjacentHTML(
+        "beforeend",
+        `<div class="weather-detail-item">
+          <span class="weather-detail-item-label">${label}</span>
+          <span class="weather-detail-item-top">${icon}</span>
+          <span class="weather-detail-badge">${temp}°</span>
+        </div>`
+      );
+    }
+  }
+}
+
+function openWeatherDetail() {
+  if (!lastWeatherData) return;
+  weatherDetailOpen = true;
+  renderWeatherDetail(lastWeatherData, currentWeatherLocation && currentWeatherLocation.label);
+  weatherDetailEl.hidden = false;
+}
+
+function closeWeatherDetail() {
+  weatherDetailOpen = false;
+  weatherDetailEl.hidden = true;
 }
 
 async function showWeatherAt(lat, lon, label) {
@@ -224,7 +380,9 @@ async function showWeatherAt(lat, lon, label) {
 
   try {
     const data = await fetchWeather(lat, lon);
+    lastWeatherData = data;
     setWeatherPin(lat, lon, renderWeatherBadge(data));
+    if (weatherDetailOpen) renderWeatherDetail(data, label);
   } catch (err) {
     setWeatherPin(lat, lon, `<div class="map-pin-badge"><span>Couldn't load weather</span></div>`);
   }
@@ -232,6 +390,27 @@ async function showWeatherAt(lat, lon, label) {
 
 map.on("click", (e) => {
   showWeatherAt(e.latlng.lat, e.latlng.lng);
+});
+
+// Clicking the weather pill should open the detail card instead of moving
+// the pin. A capture-phase listener on the map container runs before
+// Leaflet's own (bubble-phase) click handler reaches it, so stopping
+// propagation here reliably prevents that handler from ever firing.
+document.getElementById("map").addEventListener(
+  "click",
+  (e) => {
+    if (e.target.closest(".map-pin-badge")) {
+      e.stopPropagation();
+      openWeatherDetail();
+    }
+  },
+  true
+);
+
+weatherDetailCloseBtn.addEventListener("click", () => {
+  removeWeatherPin();
+  currentWeatherLocation = null;
+  lastWeatherData = null;
 });
 
 // --- Live lightning feed (Blitzortung.org) -------------------------------
