@@ -205,7 +205,7 @@ main {
 .status-pill {
   position: absolute;
   left: 16px;
-  bottom: 16px;
+  bottom: 24px;
   z-index: 500;
   display: flex;
   align-items: center;
@@ -243,7 +243,7 @@ main {
 .map-controls {
   position: absolute;
   right: 16px;
-  bottom: 16px;
+  bottom: 24px;
   z-index: 500;
   display: flex;
   flex-direction: column;
