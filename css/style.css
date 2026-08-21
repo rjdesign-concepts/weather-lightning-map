@@ -13,6 +13,7 @@
   --input: #e0e0e0;
   --accent: #ededfc;
   --sky: #38bdf8;
+  --sky-light: #bae6fd;
   --warn: #f59e0b;
   --success: #22c55e;
   --danger: #ef4444;
@@ -26,6 +27,7 @@
   --shadow-toolbar: 0 4px 16px rgba(0, 0, 0, 0.12);
   --shadow-pill: 0 2px 8px rgba(0, 0, 0, 0.12);
   --shadow-modal: 0 10px 40px rgba(0, 0, 0, 0.25);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
   --overlay: rgba(15, 15, 15, 0.4);
 }
 
@@ -41,7 +43,9 @@ html[data-theme="dark"] {
   --shadow-toolbar: 0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-pill: 0 2px 8px rgba(0, 0, 0, 0.45);
   --shadow-modal: 0 10px 40px rgba(0, 0, 0, 0.6);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
   --overlay: rgba(0, 0, 0, 0.6);
+  --sky-light: rgba(56, 189, 248, 0.25);
 }
 
 * {
@@ -423,11 +427,134 @@ main {
   color: var(--foreground);
   white-space: nowrap;
   box-shadow: var(--shadow-pill);
+  /* The wrapping .map-pin-wrap is pointer-events:none so map clicks pass
+     through the pin itself, but the badge is a real button — clicking it
+     opens the detailed weather card instead of moving the pin. */
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 .map-pin-icon {
   display: block;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
+}
+
+/* --- Detailed weather card (top-right, opened from the pin's weather pill) - */
+
+.weather-detail {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 500;
+  width: 300px;
+  max-width: calc(100vw - 32px);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+
+.weather-detail[hidden] {
+  display: none;
+}
+
+.weather-detail-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 12px 12px 8px;
+}
+
+.weather-detail-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.weather-detail-location {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--card-foreground, var(--foreground));
+}
+
+.weather-detail-description {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--muted-foreground);
+}
+
+.weather-detail-separator {
+  height: 1px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.weather-detail-section {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px;
+}
+
+.weather-detail-section-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--card-foreground, var(--foreground));
+}
+
+.weather-detail-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+}
+
+.weather-detail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 33px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  padding: 2px 0;
+}
+
+.weather-detail-item--now {
+  background: var(--sky-light);
+}
+
+.weather-detail-item-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--muted-foreground);
+}
+
+.weather-detail-item-label {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.weather-detail-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 2px 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--foreground);
+  white-space: nowrap;
 }
 
 /* --- App footer ------------------------------------------------------------ */
