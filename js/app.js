@@ -30,7 +30,8 @@ const TILE_LAYERS = {
 
 const PIN_SVG =
   '<svg class="map-pin-icon" width="24" height="24" viewBox="0 0 24 24" style="fill:var(--sky)">' +
-  '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/>' +
+  '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" ' +
+  'stroke="#fff" stroke-width="2" stroke-linejoin="round" paint-order="stroke"/>' +
   "</svg>";
 
 const CLOUD_SUN_SVG =
@@ -255,11 +256,11 @@ function clearRenderedMarkers() {
 
 function addStrikeMarker(strike) {
   const marker = L.circleMarker([strike.lat, strike.lon], {
-    radius: 6,
+    radius: 5,
     color: "#f59e0b",
     fillColor: "#f59e0b",
-    fillOpacity: 0.85,
-    weight: 1,
+    fillOpacity: 1,
+    weight: 0,
   })
     .bindPopup(`Lightning strike — ${formatStrikeAge(strike.timestamp)}`)
     .addTo(lightningLayer);
@@ -281,12 +282,26 @@ function addStrikeMarker(strike) {
  * that: an expanding ring (real-world radius in metres, so it scales
  * correctly with zoom) that grows and fades once, then disappears, leaving
  * just the plain strike dot behind (added separately via addStrikeMarker).
+ *
+ * The ring's radius grows at the real physical speed of sound, in metres
+ * per second of real time — since it's drawn with a real-world-metre
+ * L.circle, Leaflet converts that to screen pixels itself, so the same
+ * physical growth rate naturally animates faster on screen when zoomed in
+ * and slower when zoomed out, without any manual zoom-based scaling.
+ *
+ * Above a certain zoom level (zoomed in close) a real-world 22km ring would
+ * balloon far past the edges of the viewport almost immediately and just
+ * look broken, so the animation only plays at or below a reasonable zoom
+ * level; above it, only the static strike dot is shown.
  */
-function animateSoundWave(lat, lon, startDelayMs) {
-  const MAX_RADIUS_M = 22000; // roughly how far thunder can carry on a calm day
-  const DURATION_MS = 2600;
+const SPEED_OF_SOUND_MPS = 343; // dry air at ~20°C
+const MAX_RADIUS_M = 22000; // roughly how far thunder can carry on a calm day
+const SOUND_WAVE_MAX_ZOOM = 11;
 
+function animateSoundWave(lat, lon, startDelayMs) {
   setTimeout(() => {
+    if (map.getZoom() > SOUND_WAVE_MAX_ZOOM) return;
+
     const ring = L.circle([lat, lon], {
       radius: 1,
       color: "#f59e0b",
@@ -298,9 +313,10 @@ function animateSoundWave(lat, lon, startDelayMs) {
 
     const start = performance.now();
     function tick(now) {
-      const t = Math.min(1, (now - start) / DURATION_MS);
-      const eased = 1 - Math.pow(1 - t, 2); // ease-out: fast start, slow finish
-      ring.setRadius(MAX_RADIUS_M * eased);
+      const elapsedSeconds = (now - start) / 1000;
+      const radius = Math.min(MAX_RADIUS_M, SPEED_OF_SOUND_MPS * elapsedSeconds);
+      const t = radius / MAX_RADIUS_M; // physical progress, 0..1 — linear, not eased
+      ring.setRadius(radius);
       ring.setStyle({ opacity: 0.55 * (1 - t) });
       if (t < 1) {
         requestAnimationFrame(tick);
